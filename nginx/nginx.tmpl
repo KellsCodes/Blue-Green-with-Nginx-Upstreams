@@ -1,0 +1,20 @@
+server {
+	listen 80;
+
+	server_name localhost;
+
+	# Define the backend upstream block dynamically
+	location / {
+		proxy_pass http://$ACTIVE_POOL;
+	}
+}
+
+# Define blue pool
+upstream blue {
+	server blue:8080
+}
+
+# Define green pool
+upstream green {
+	server green:8080
+}
