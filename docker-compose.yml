@@ -4,13 +4,17 @@ services:
   app_blue:
     image: ${BLUE_IMAGE}
     container_name: app_blue
+    restart: always
     environment:
-      - PORT=${BLUE_PORT}
+      - PORT=${PORT}
       - RELEASE_ID=${RELEASE_ID_BLUE}
+      - APP_POOL=blue
+    expose:
+      - "${PORT}"
     ports:
-      - "${BLUE_PORT}:${BLUE_PORT}"
+      - "${BLUE_PORT}:${PORT}"
     healthcheck:
-      test:   ["CMD", "curl", "-f", "http://localhost:8081/healthz"]
+      test:   ["CMD", "curl", "-f", "http://localhost:${PORT}/healthz"]
       interval: 5s
       timeout: 2s
       retries: 3
@@ -20,25 +24,29 @@ services:
   app_green:
     image: ${GREEN_IMAGE}
     container_name: app_green
+    restart: always
     environment:
-      - PORT=${GREEN_PORT}
+      - PORT=${PORT}
       - RELEASE_ID=${RELEASE_ID_GREEN}
+      - APP_POOL=green
+    expose:
+      - "${PORT}"
     ports:
-      - "${GREEN_PORT}:${GREEN_PORT}"
+      - "${GREEN_PORT}:${PORT}"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/healthz"]
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT}/healthz"]
       interval: 5s
       timeout: 2s
       retries: 3
     networks:
       - app-network
-
   nginx:
     image: nginx:latest
-    container_name: nginx_gateway
+    container_name: nginx
     depends_on:
       - app_blue
       - app_green
+    restart: always
     ports:
       - "${NGINX_PORT}:80"
     volumes:
@@ -46,9 +54,13 @@ services:
       - ./entrypoint.sh:/docker-entrypoint.d/10-envsubst.sh:ro
     environment:
       - ACTIVE_POOL=${ACTIVE_POOL}
+      - BLUE_PORT=${BLUE_PORT}
+      - GREEN_PORT=${GREEN_PORT}
+      - RELEASE_ID_BLUE=${RELEASE_ID_BLUE}
+      - RELEASE_ID_GREEN=${RELEASE_ID_GREEN}
     networks:
       - app-network
 
 networks:
-  app-network
+  app-network:
     driver: bridge

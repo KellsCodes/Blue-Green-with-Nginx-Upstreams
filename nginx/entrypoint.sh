@@ -14,7 +14,7 @@ if [ -f "$TEMPLATE_PATH" ]; then
 	
 	# Run envsubst to replace environment variables with their actual values
 	# The command reads the template, substitutes ${VARIABLES}, and writes the result to OUTPUT_PATH
-	envsubst < "$TEMPLATE_PATH" > "$OUTPUT_PATH"
+	envsubst '$ACTIVE_POOL $BLUE_PORT $GREEN_PORT $RELEASE_ID_BLUE $RELEASE_ID_GREEN' < "$TEMPLATE_PATH" > "$OUTPUT_PATH"
 
 	echo "Substitution complete! Generated config saved to $OUTPUT_PATH"
 else
@@ -24,9 +24,9 @@ fi
 
 
 echo "--- Final nginx config ---"
-cat "$OUTPUT_PATH"
+head -n 20 "$OUTPUT_PATH"
 echo "--------------------------"
 
 echo "Stariting nginx in the foreground mode..."
-# Finally, run nginx in the foreground (required for Docker containers)
+# Run nginx in the foreground (required for Docker containers)
 nginx -g 'daemon off;'
