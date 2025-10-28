@@ -34,7 +34,7 @@
 
 	# Upstream when green is the active pool (green primary, blue backup)
 	upstream green {
-		server app_green:${PORT} max_fails=1 fail_timeouts=5s;
+		server app_green:${PORT} max_fails=1 fail_timeout=5s;
 		server app_blue:${PORT} backup;
 	}
 
