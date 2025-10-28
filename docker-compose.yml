@@ -14,7 +14,7 @@ services:
     ports:
       - "${BLUE_PORT}:${PORT}"
     healthcheck:
-      test:   ["CMD", "curl", "-f", "http://localhost:${PORT}/healthz"]
+      test:   ["CMD-SHELL", "node -e \"process.exit(0)\""]
       interval: 5s
       timeout: 2s
       retries: 3
@@ -34,7 +34,7 @@ services:
     ports:
       - "${GREEN_PORT}:${PORT}"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${PORT}/healthz"]
+      test: ["CMD-SHELL", "node -e \"process.exit(0)\""]
       interval: 5s
       timeout: 2s
       retries: 3

@@ -49,29 +49,28 @@
 			add_header Content-Type text/plain;
 			return 200 "ok";
 		}
-	}
 
+		# Main proxy location
+		location / {
+			# Preserve original Host + forwarding headers so apps can see client info
+	                proxy_set_header Host $host;
+        	        proxy_set_header X-Real-IP $remote_addr;
+                	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	                proxy_set_header X-Forwarded-Proto $scheme;
 
-	# Main proxy location
-	location / {
-		# Preserve original Host + forwarding headers so apps can see client info
-		proxy_set_header Host $host;
-		proxy_set_header X-Real-IP $remote_addr;
-		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-		proxy_set_header X-Forwarded-Proto $scheme;
+			# Ensure response headers from upstream are passed unchanged to the client
+			# (nginx does not remove most headers by default, but be explicit for the ones we care about)
+			proxy_pass_header X-App-Pool;
+			proxy_pass_header X-Release-Id;
 
-		# Ensure response headers from upstream are passed unchanged to the client
-		# (nginx does not remove most headers by default, but be explicit for the ones we care about)
-		proxy_pass_header X-App-Pool;
-		proxy_pass_header X-Release-Id;
+			# Turn on buffering so nginx can retry upstreams without streaming partial responses to clients
+			proxy_buffering on;
 
-		# Turn on buffering so nginx can retry upstreams without streaming partial responses to clients
-		proxy_buffering on;
+			# Forward the request to the active upstream (set by ACTIVE_POOL -> 'blue' or 'green')
+			proxy_pass http://$ACTIVE_POOL;
 
-		# Forward the request to the active upstream (set by ACTIVE_POOL -> 'blue' or 'green')
-		proxy_pass http://$ACTIVE_POOL;
-
-		# Prevent extremely long client requests (keep under the 10s requirement)
-		# Note: combined with proxy_read_timeout and proxy_next_upstream_timeout this keeps overall request bounded.
-		send_timeout 9s;
+			# Prevent extremely long client requests (keep under the 10s requirement)
+			# Note: combined with proxy_read_timeout and proxy_next_upstream_timeout this keeps overall request bounded.
+			send_timeout 9s;
+		}
 	}
