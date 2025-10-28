@@ -1,7 +1,4 @@
-worker_processes auto;
-events { worker_connections 1024; }
 
-http {
 	#---------- Connection and buffering tuning ----------
 	# Wait time to establish connection to upstream
 	proxy_connect_timeout 1s;
@@ -78,4 +75,3 @@ http {
 		# Note: combined with proxy_read_timeout and proxy_next_upstream_timeout this keeps overall request bounded.
 		send_timeout 9s;
 	}
-}

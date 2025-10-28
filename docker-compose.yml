@@ -58,6 +58,7 @@ services:
       - GREEN_PORT=${GREEN_PORT}
       - RELEASE_ID_BLUE=${RELEASE_ID_BLUE}
       - RELEASE_ID_GREEN=${RELEASE_ID_GREEN}
+      - PORT=${PORT}
     networks:
       - app-network
 
