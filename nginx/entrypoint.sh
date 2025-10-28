@@ -14,7 +14,7 @@ if [ -f "$TEMPLATE_PATH" ]; then
 	
 	# Run envsubst to replace environment variables with their actual values
 	# The command reads the template, substitutes ${VARIABLES}, and writes the result to OUTPUT_PATH
-	envsubst '$ACTIVE_POOL $BLUE_PORT $GREEN_PORT $RELEASE_ID_BLUE $RELEASE_ID_GREEN' < "$TEMPLATE_PATH" > "$OUTPUT_PATH"
+	envsubst '$ACTIVE_POOL $PORT $BLUE_PORT $GREEN_PORT $RELEASE_ID_BLUE $RELEASE_ID_GREEN' < "$TEMPLATE_PATH" > "$OUTPUT_PATH"
 
 	echo "Substitution complete! Generated config saved to $OUTPUT_PATH"
 else

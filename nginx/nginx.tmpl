@@ -1,20 +1,81 @@
-server {
-	listen 80;
+worker_processes auto;
+events { worker_connections 1024; }
 
-	server_name localhost;
+http {
+	#---------- Connection and buffering tuning ----------
+	# Wait time to establish connection to upstream
+	proxy_connect_timeout 1s;
 
-	# Define the backend upstream block dynamically
-	location / {
-		proxy_pass http://$ACTIVE_POOL;
+	# Wait time for the upstream to send a response
+	proxy_read_timeout 5s;
+
+	# Wait time while sending a request to the upstream
+	proxy_send_timeout 3s;
+
+	# Prevent clients waiting forever
+	send_timeout 9s;
+
+	#--------- Retry behaviour --------------------
+	# Try the next upstream on: network error, timeout, or 5xx responses
+	proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
+
+	# Limit the retries to keep total request time bounded
+	proxy_next_upstream_tries 2;
+
+	# Optional overall timeout for trying upstreams
+	proxy_next_upstream_timeout 8s;
+
+	# ------- Upstreams (blue primary, green backup) --------
+	# When a server is marked with 'backup', nginx will only use it if all non-backup are down
+	upstream blue {
+		# Primary: app_blue. Mark it as failed quickly if it misbehaves.
+		server app_blue:${PORT} max_fails=1 fail_timeout=5s;
+		
+		#Backup: app_green will be used when blue is down or no retry
+		server app_green:${PORT} backup;
 	}
-}
 
-# Define blue pool
-upstream blue {
-	server blue:8080
-}
+	# Upstream when green is the active pool (green primary, blue backup)
+	upstream green {
+		server app_green:${PORT} max_fails=1 fail_timeouts=5s;
+		server app_blue:${PORT} backup;
+	}
 
-# Define green pool
-upstream green {
-	server green:8080
+	
+	# --------- Server (public entrypoint) ----------
+	server {
+		listen 80;
+		server_name localhost;
+
+		# Health endpoint for nginx itself
+		location = /nginx_healthz {
+			add_header Content-Type text/plain;
+			return 200 "ok";
+		}
+	}
+
+
+	# Main proxy location
+	location / {
+		# Preserve original Host + forwarding headers so apps can see client info
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+
+		# Ensure response headers from upstream are passed unchanged to the client
+		# (nginx does not remove most headers by default, but be explicit for the ones we care about)
+		proxy_pass_header X-App-Pool;
+		proxy_pass_header X-Release-Id;
+
+		# Turn on buffering so nginx can retry upstreams without streaming partial responses to clients
+		proxy_buffering on;
+
+		# Forward the request to the active upstream (set by ACTIVE_POOL -> 'blue' or 'green')
+		proxy_pass http://$ACTIVE_POOL;
+
+		# Prevent extremely long client requests (keep under the 10s requirement)
+		# Note: combined with proxy_read_timeout and proxy_next_upstream_timeout this keeps overall request bounded.
+		send_timeout 9s;
+	}
 }
