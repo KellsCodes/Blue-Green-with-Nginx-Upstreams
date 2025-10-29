@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Target URLs
-NGINX_URL="http://18.212.230.205:8080/version"
-BLUE_CHAOS="http://18.212.230.205:8081/chaos/start?mode=error"
-BLUE_RECOVER="http://18.212.230.205:8081/chaos/stop"
+NGINX_URL="http://44.223.10.74:8080/version"
+BLUE_CHAOS="http://44.223.10.74:8081/chaos/start?mode=error"
+BLUE_RECOVER="http://44.223.10.74:8081/chaos/stop"
 
 # Number of concurrent "users"
 CONCURRENT=10
