@@ -22,6 +22,10 @@ else
 	exit 1
 fi
 
+# --- Ensure log files exists for watcher ---
+mkdir -p /var/log/nginx
+touch /var/log/nginx/access.log
+
 
 echo "--- Final nginx config ---"
 head -n 20 "$OUTPUT_PATH"
