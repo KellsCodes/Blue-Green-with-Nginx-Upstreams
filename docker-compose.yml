@@ -52,6 +52,7 @@ services:
     volumes:
       - ./nginx/nginx.tmpl:/etc/nginx/templates/default.conf.template:ro
       - ./nginx/entrypoint.sh:/docker-entrypoint.d/10-envsubst.sh:ro
+      - nginx-logs:/var/log/nginx
     environment:
       - ACTIVE_POOL=${ACTIVE_POOL}
       - BLUE_PORT=${BLUE_PORT}
@@ -61,6 +62,31 @@ services:
       - PORT=${PORT}
     networks:
       - app-network
+
+  alert_watcher:
+    image: python:3.11-slim
+    container_name: alert_watcher
+    restart: always
+    depends_on:
+      - nginx
+    volumes:
+      - nginx-logs:/var/log/nginx
+      - ./watcher.py:/app/watcher.py
+      - ./requirements.txt:/app/requirements.txt
+    working_dir: /app
+    command: >
+      sh -c "pip install -r requirements.txt && python3 watcher.py"
+    environment:
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - ACTIVE_POOL=${ACTIVE_POOL}
+      - ERROR_RATE_THRESHOLD=${ERROR_RATE_THRESHOLD}
+      - WINDOW_SIZE=${WINDOW_SIZE}
+      - ALERT_COOLDOWN_SEC=${ALERT_COOLDOWN_SEC}
+    networks:
+      - app-network
+
+volumes:
+  nginx-logs:
 
 networks:
   app-network:
