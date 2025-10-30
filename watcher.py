@@ -1,100 +1,75 @@
 import os
-import time
 import json
+import time
 import requests
 from collections import deque
+import subprocess
 
-SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
-ACTIVE_POOL = os.getenv("ACTIVE_POOL")
-ERROR_RATE_THRESHOLD = int(os.getenv("ERROR_RATE_THRESHOLD", 2))
-WINDOW_SIZE = int(os.getenv("WINDOW_SIZE", 200))
-ALERT_COOLDOWN_SEC = int(os.getenv("ALERT_COOLDOWN_SEC", 300))
+# ---------------- Config ----------------
 LOG_FILE = "/var/log/nginx/access.log"
+SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
+ACTIVE_POOL = os.environ.get("ACTIVE_POOL")
+ERROR_RATE_THRESHOLD = float(os.environ.get("ERROR_RATE_THRESHOLD", 2.0))  # percent
+WINDOW_SIZE = int(os.environ.get("WINDOW_SIZE", 200))  # number of requests
+ALERT_COOLDOWN_SEC = int(os.environ.get("ALERT_COOLDOWN_SEC", 300))  # seconds
 
-
-def tail_f(filename):
-	"""Generator that yields new lines as they are written."""
-	with open(filename, "r") as f:
-		# Go to the end of the file
-		f.seek(0, 2)
-		while True:
-			line = f.readline()
-			if not line:
-				time.sleep(0.1) # wait for new lines
-				continue
-			yield line.strip()
-
-# Sliding window for error rate
-error_window = deque(maxlen=WINDOW_SIZE)
-
-# Track last seen pool to detect failover
+# ---------------- State ----------------
+rolling_window = deque(maxlen=WINDOW_SIZE)
+last_alert_time = 0
 last_pool = ACTIVE_POOL
 
-# last alert times to enforce cooldown
-last_failover_alert = 0
-last_error_alert = 0
-
+# ---------------- Functions ----------------
+def send_slack_alert(message):
+    global last_alert_time
+    now = time.time()
+    if now - last_alert_time < ALERT_COOLDOWN_SEC:
+        return  # enforce cooldown
+    payload = {"text": message}
+    try:
+        requests.post(SLACK_WEBHOOK_URL, json=payload, timeout=5)
+        last_alert_time = now
+        print(f"Slack alert sent: {message}")
+    except Exception as e:
+        print(f"Failed to send Slack alert: {e}")
 
 def process_line(line):
-	global last_pool, last_failover_alert, last_error_alert
-
-	try:
-		log = json.loads(line)
-	except json.JSONDecodeError:
-		print(f"Skipping invalid line: {line}")
-		return
-
-	pool = log.get("pool")
-	upstream_status = log.get("upstream_status")
-
-	# Convert status to int if possible
-	try:
-		status_code = int(upstream_status)
-	except (TypeError, ValueError):
-		status_code = 0
-
-	# Add to sliding window
-	error_window.append(status_code)
-
-	current_time = time.time()
-
-	# ---- Failover detection ----
-	if pool != last_pool:
-		if current_time - last_failover_alert >= ALERT_COOLDOWN_SEC:
-			send_slack_alert(f"Failover detected: {last_pool} → {pool}")
-			last_failover_alert = current_time
-		last_pool = pool
-
-	# ---- Error rate detection ---
-	if len(error_window) == WINDOW_SIZE:
-		num_5xx = sum(1 for code in error_window if 500 <= code < 600)
-		error_rate = (num_5xx / WINDOW_SIZE) * 100
-
-		if error_rate >= ERROR_RATE_THRESHOLD:
-			if current_time - last_error_alert >= ALERT_COOLDOWN_SEC:
-				send_slack_alert(f"High upstream 5xx error rate: {error_rate:.2f}% over last {WINDOW_SIZE} requests")
-				last_error_alert = current_time
-
-
-
-def send_slack_alert(message):
-    """Send an alert message to Slack using the webhook URL."""
-    if not SLACK_WEBHOOK_URL:
-        print(f"Slack webhook not configured. Alert: {message}")
+    global last_pool
+    try:
+        log = json.loads(line)
+    except json.JSONDecodeError:
         return
 
-    payload = {"text": message}
+    upstream_status = int(log.get("upstream_status", 0))
+    pool = log.get("pool", ACTIVE_POOL)
 
-    try:
-        response = requests.post(SLACK_WEBHOOK_URL, json=payload, timeout=5)
-        if response.status_code != 200:
-            print(f"Failed to send Slack alert: {response.text}")
-    except requests.RequestException as e:
-        print(f"Error sending Slack alert: {e}")
+    # Detect failover
+    if pool != last_pool:
+        send_slack_alert(f"Failover detected: {last_pool} → {pool}")
+        last_pool = pool
 
+    # Track error rate
+    rolling_window.append(upstream_status)
+    if len(rolling_window) == WINDOW_SIZE:
+        errors = sum(1 for s in rolling_window if 500 <= s < 600)
+        error_rate = (errors / WINDOW_SIZE) * 100
+        if error_rate > ERROR_RATE_THRESHOLD:
+            send_slack_alert(f"High error rate: {error_rate:.2f}% over last {WINDOW_SIZE} requests")
 
+# ---------------- Main ----------------
+print(f"# Starting watcher on {LOG_FILE}...")
 
-if __name__ == "__main__":
-    print(f"Starting watcher on {LOG_FILE}...")
-    for line in tail_f(LOG_FILE):
-        process_line(line)
+# Wait until log file exists
+while not os.path.exists(LOG_FILE):
+    print(f"Waiting for {LOG_FILE} to appear...")
+    time.sleep(1)
+
+# Tail the log file using subprocess to avoid seek() issues
+proc = subprocess.Popen(
+    ["tail", "-F", LOG_FILE],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True
+)
+
+for line in proc.stdout:
+    process_line(line.strip())
