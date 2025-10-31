@@ -2,3 +2,5 @@
 file.txt
 ..txt.swp
 task3_venv/*
+failover_sim.py
+simulate_5xx.py
