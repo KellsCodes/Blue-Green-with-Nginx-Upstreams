@@ -113,3 +113,22 @@ docker compose restart nginx
   http_500 http_502 http_503 http_504.
 * Alerts are purely log-driven — no coupling to application logic.
 * Runbook included as RUNBOOK.md for operator response steps.
+
+
+*Screenshots*
+1. Zero failover flip: https://res.cloudinary.com/dsosvszg7/image/upload/v1761948836/failover_detect_acpnk6.png
+2. Elevated 5xx error: https://res.cloudinary.com/dsosvszg7/image/upload/v1761948836/elevated_error_bbof5n.png
+3. Nginx log line snippet:
+{
+  "time": "2025-10-31T22:39:07+00:00",
+  "client_ip": "105.116.13.8",
+  "method": "GET",
+  "uri": "/version",
+  "pool": "green",
+  "release": "green-v1",
+  "upstream_status": "200",
+  "upstream": "172.18.0.3:3000",
+  "request_time": "0.001",
+  "upstream_response_time": "0.001"
+}
+
