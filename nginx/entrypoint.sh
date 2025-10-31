@@ -25,12 +25,12 @@ fi
 # --- Ensure log files exists for watcher ---
 mkdir -p /var/log/nginx
 touch /var/log/nginx/access.log
-
+touch /var/log/nginx/error.log
 
 echo "--- Final nginx config ---"
 head -n 20 "$OUTPUT_PATH"
 echo "--------------------------"
 
-echo "Stariting nginx in the foreground mode..."
+echo "Starting nginx in the foreground mode..."
 # Run nginx in the foreground (required for Docker containers)
 nginx -g 'daemon off;'
