@@ -76,6 +76,19 @@ The system resumed healthy operation after transient issues or a pool switch.
 ✅ No immediate action required.
 Continue monitoring metrics and ensure no regression occurs.
 
+**Maintenance Mode (Suppressing Alerts)**
+During planned deployments or scaling operations, you can suppress alerts to avoid false positives.
+1. Set a temporary flag in .env (for example):
+```bash
+MAINTENANCE_MODE=true
+2. Restart the watcher service:
+```bash
+docker-compose restart alert_watcher
+3. Once maintenance completes, unset the flag and restart again:
+```bash
+MAINTENANCE_MODE=false
+docker-compose restart alert_watcher
+(Note: This flag is optional; not implemented, simply pause the watcher container during maintenance.)
 
 **Troubleshooting**
 | Symptom                  | Possible Cause                         | Fix                                               |
