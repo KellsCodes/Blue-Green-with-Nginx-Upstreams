@@ -1,9 +1,11 @@
 #!/bin/bash
 
+IP="54.89.168.13"
+
 # Target URLs
-NGINX_URL="http://44.223.20.83:8080/version"
-BLUE_CHAOS="http://44.223.20.83:8081/chaos/start?mode=error"
-BLUE_RECOVER="http://44.223.20.83:8081/chaos/stop"
+NGINX_URL="http://$IP:8080/version"
+BLUE_CHAOS="http://$IP:8081/chaos/start?mode=error"
+BLUE_RECOVER="http://$IP:8081/chaos/stop"
 
 # Number of concurrent "users"
 CONCURRENT=10
