@@ -39,10 +39,12 @@ Nginx began routing requests from one pool to another — typically after a heal
 docker ps
 docker logs blue-app
 docker logs green-app
+```
 3. Inspect /healthz endpoints of both apps.
 4. If the failed pool recovers, you may switch traffic back manually using:
 ```bash
 docker exec nginx nginx -s reload
+```
 5. Continue monitoring Slack for recovery confirmation.
 
 2. **High Error Rate Detected**
@@ -52,6 +54,7 @@ Pool: blue
 Errors: 15/200 (7.5%)
 Threshold: 2%
 Immediate investigation recommended.
+```
 
 **Meaning**
 Nginx served an unusually high number of HTTP 5xx responses (e.g., 502, 503, 504) within the last N requests.
@@ -60,6 +63,7 @@ Nginx served an unusually high number of HTTP 5xx responses (e.g., 502, 503, 504
 1. Inspect the active pool’s container:
 ```bash
 docker logs blue-app
+```
 2. Look for upstream errors (e.g., DB unavailability, app crash, or slow response).
 3. If errors persist:
 	* Temporarily switch traffic to the healthy pool (Green).
@@ -81,12 +85,15 @@ During planned deployments or scaling operations, you can suppress alerts to avo
 1. Set a temporary flag in .env (for example):
 ```bash
 MAINTENANCE_MODE=true
+```
 2. Restart the watcher service:
 ```bash
 docker-compose restart alert_watcher
+```
 3. Once maintenance completes, unset the flag and restart again:
 ```bash
 MAINTENANCE_MODE=false
+```
 docker-compose restart alert_watcher
 (Note: This flag is optional; not implemented, simply pause the watcher container during maintenance.)
 
